@@ -7,16 +7,24 @@
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: Arial, "PingFang SC", sans-serif; background: #f3efe7; color: #282018; }
-    header { padding: 18px 24px; background: #fffaf2; border-bottom: 1px solid #d9cdbc; display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+    header { padding: 18px 24px; background: #fffaf2; border-bottom: 1px solid #d9cdbc; display: flex; justify-content: space-between; gap: 16px; align-items: center; flex-wrap: wrap; }
     h1 { margin: 0; font-size: 26px; }
     button { border: 0; border-radius: 8px; padding: 10px 13px; background: #8d3e37; color: #fff; font-weight: 800; cursor: pointer; }
     button.secondary { background: #71675c; }
+    button:disabled { background: #b9afa3; cursor: not-allowed; }
     input, select { width: 100%; border: 1px solid #d9cdbc; border-radius: 6px; padding: 9px; font: inherit; background: #fff; }
     label { display: block; margin: 9px 0 5px; color: #76695e; font-size: 13px; }
-    .app { display: grid; grid-template-columns: 280px 1fr 320px; gap: 16px; padding: 16px; }
+    .statusbar { padding: 8px 24px; background: #fbf6ec; border-bottom: 1px solid #e1d5c5; font-size: 13px; color: #5d5348; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+    .statusbar .ok { color: #355b38; font-weight: 800; }
+    .statusbar .warn { color: #a03a2e; font-weight: 800; }
+    .app { display: grid; grid-template-columns: 280px 1fr 340px; gap: 16px; padding: 16px; }
     .panel { background: #fffaf2; border: 1px solid #d9cdbc; border-radius: 8px; padding: 14px; }
     .grid { display: grid; gap: 2px; margin: 0 auto; width: min(100%, 720px); border: 6px solid #72533c; background: #72533c; }
     .cell { aspect-ratio: 1; background: #f8ead2; cursor: pointer; border-radius: 2px; }
+    .cell.conflict { outline: 3px dashed #a03a2e; outline-offset: -3px; animation: pulse 1s infinite; position: relative; z-index: 1; }
+    .cell.conflict-theirs { outline: 3px solid #2e7d32; animation: none; }
+    .cell.conflict-ours { outline: 3px solid #1f5f78; animation: none; }
+    @keyframes pulse { 0%,100% { outline-color: #a03a2e; } 50% { outline-color: #e98c52; } }
     .palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
     .swatch { aspect-ratio: 1; border-radius: 8px; border: 3px solid transparent; cursor: pointer; }
     .swatch.active { border-color: #1f1b16; }
@@ -27,14 +35,43 @@
     .mini { aspect-ratio: 1; border-radius: 2px; }
     .toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .warning { color: #a03a2e; font-weight: 800; }
+    .stale-banner { background: #fbe9e5; border: 1px solid #e0b4ac; color: #a03a2e; border-radius: 6px; padding: 8px 10px; font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+    .merge-banner { background: #fdf3e0; border: 1px solid #e6c98d; color: #8a6a22; border-radius: 6px; padding: 8px 10px; font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+    .dimmed { opacity: .55; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(40,32,24,.55); display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #fffaf2; border-radius: 10px; padding: 18px; max-width: 720px; width: 100%; max-height: 86vh; overflow: auto; border: 1px solid #d9cdbc; }
+    .modal h3 { margin: 0 0 10px; font-size: 20px; }
+    .modal .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+    .conflict-list { display: grid; gap: 6px; margin-top: 10px; max-height: 46vh; overflow: auto; }
+    .conflict-row { display: flex; align-items: center; gap: 8px; border: 1px solid #e1d5c5; border-radius: 6px; padding: 6px 8px; background: #fff; }
+    .conflict-row .num { font-weight: 800; color: #76695e; min-width: 56px; }
+    .conflict-row button { display: flex; align-items: center; gap: 6px; padding: 6px 9px; font-weight: 700; }
+    .conflict-row button.pick-active { outline: 3px solid #1f1b16; }
+    .chip { display: inline-block; width: 16px; height: 16px; border-radius: 3px; border: 1px solid rgba(0,0,0,.15); }
+    .pkg-row, .rev-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-bottom: 1px solid #e1d5c5; padding: 8px 0; }
+    .pkg-row:last-child, .rev-row:last-child { border-bottom: 0; }
+    .pkg-meta { font-size: 12px; color: #76695e; }
+    .snapshot-grid { display: grid; gap: 1px; border: 4px solid #72533c; background: #72533c; margin: 10px auto; width: min(100%, 480px); }
+    .snapshot-grid .mini { border-radius: 1px; }
+    .recover-row { display: flex; gap: 8px; margin-top: 12px; align-items: center; }
+    .recover-row input { width: 120px; }
+    .hint { font-size: 13px; color: #76695e; }
     @media (max-width: 1000px) { header { display: block; } .app { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <header>
-    <div><h1>手工织锦纹样排版台</h1><div>绘制经纬网格纹样，统计色线用量并保存方案。</div></div>
-    <div class="toolbar"><button id="saveBtn">保存方案</button><button id="exportBtn" class="secondary">导出JSON</button></div>
+    <div><h1>手工织锦纹样排版台</h1><div>绘制经纬网格纹样，记录基准修订号，离线回传三路合并。</div></div>
+    <div class="toolbar">
+      <button id="saveBtn">保存方案</button>
+      <button id="mergeBtn" class="secondary">回传合并</button>
+      <button id="pkgBtn" class="secondary">生成交付包</button>
+      <button id="historyBtn" class="secondary">修订历史</button>
+      <button id="exportBtn" class="secondary">导出草稿</button>
+    </div>
   </header>
+  <div class="statusbar" id="statusBar"></div>
   <main class="app">
     <aside class="panel">
       <h2>画布</h2>
@@ -50,12 +87,16 @@
         <button data-block="diamond" class="secondary">小菱形</button>
       </div>
     </aside>
-    <section class="panel"><div class="grid" id="grid"></div></section>
+    <section class="panel">
+      <div id="mergeBanner" class="merge-banner" style="display:none">合并处理中：虚线格子为冲突格，点击可在我方/对方颜色间切换；全部处理完才能保存或生成交付包。</div>
+      <div class="grid" id="grid"></div>
+    </section>
     <aside class="panel">
       <h2>操作</h2>
       <div class="toolbar"><button id="undoBtn" class="secondary">撤销</button><button id="redoBtn" class="secondary">重做</button></div>
       <p>点击填色，按住拖动可连续填色。</p>
       <h2>用色统计</h2>
+      <div id="staleBanner" class="stale-banner" style="display:none">格子已改动，用色统计与断线风险已失效，保存方案或生成交付包时重算；旧交付包保留快照。</div>
       <div class="stats" id="stats"></div>
       <h2>重复单元预览</h2>
       <div class="preview" id="preview"></div>
@@ -63,71 +104,448 @@
       <div id="risk"></div>
     </aside>
   </main>
+  <input type="file" id="fileInput" accept="application/json,.json" style="display:none">
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modalBox"></div>
+  </div>
   <script>
+    const STORE_KEY = "zfl31Pattern";
+    const REV_KEY = "zfl31Revisions";
+    const PKG_KEY = "zfl31Packages";
+    const IMP_KEY = "zfl31Imports";
     const colors = ["#f7e7c4","#a6322d","#1f5f78","#d6a437","#355b38","#713d7b","#1e1b18","#e98c52"];
     const grid = document.querySelector("#grid");
     const palette = document.querySelector("#palette");
     const stats = document.querySelector("#stats");
     const preview = document.querySelector("#preview");
     const risk = document.querySelector("#risk");
+    const statusBar = document.querySelector("#statusBar");
+    const mergeBanner = document.querySelector("#mergeBanner");
+    const staleBanner = document.querySelector("#staleBanner");
+    const modalOverlay = document.querySelector("#modalOverlay");
+    const modalBox = document.querySelector("#modalBox");
+    const fileInput = document.querySelector("#fileInput");
     let cols = 18, rows = 14, active = 1, block = "dot", dragging = false;
     let cells = [];
     let undo = [], redo = [];
-    function init(loadSaved = true) {
-      const saved = loadSaved && JSON.parse(localStorage.getItem("zfl31Pattern") || "null");
-      if (saved) { cols = saved.cols; rows = saved.rows; cells = saved.cells; }
-      else { cols = Number(document.querySelector("#cols").value); rows = Number(document.querySelector("#rows").value); cells = Array(cols * rows).fill(0); }
+    let state = { revision: 0, baseRevision: 0, statsValid: false, lastComputed: null };
+    let merge = null; // { result, conflicts, baseRev, fingerprint, draftName, autoCount }
+
+    function loadJSON(k, d) { try { return JSON.parse(localStorage.getItem(k) || "null") ?? d; } catch { return d; } }
+    function saveJSON(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+    function uid() { return "d" + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36); }
+    function hashFP(s) { let h = 5381; for (let i = 0; i < s.length; i++) { h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; } return "h" + h.toString(36); }
+    function draftFP(d) { return hashFP(JSON.stringify([d.baseRevision || 0, d.cols, d.rows, d.cells])); }
+    function fmtTime(t) { const d = new Date(t); return d.toLocaleString("zh-CN"); }
+
+    function init() {
+      const revStore = loadJSON(REV_KEY, { head: 0, revisions: {} });
+      let saved = loadJSON(STORE_KEY, null);
+      // 旧稿迁移：没有基准修订号的存档按首版（修订号1）迁移
+      if (saved && !saved.revision && revStore.head === 0 && Array.isArray(saved.cells)) {
+        revStore.head = 1;
+        revStore.revisions["1"] = { cols: saved.cols, rows: saved.rows, cells: saved.cells.slice(), createdAt: Date.now(), note: "旧稿迁移（首版）" };
+        try { saveJSON(REV_KEY, revStore); } catch (e) { return failWrite(e); }
+        state.revision = 1; state.baseRevision = 1;
+      }
+      if (saved && saved.revision) {
+        cols = saved.cols; rows = saved.rows; cells = saved.cells;
+        state.revision = saved.revision;
+        state.baseRevision = saved.baseRevision || saved.revision;
+      } else if (revStore.head > 0) {
+        const r = revStore.revisions[String(revStore.head)];
+        cols = r.cols; rows = r.rows; cells = r.cells.slice();
+        state.revision = revStore.head; state.baseRevision = revStore.head;
+      } else {
+        cols = Number(document.querySelector("#cols").value); rows = Number(document.querySelector("#rows").value);
+        cells = Array(cols * rows).fill(0);
+      }
       document.querySelector("#cols").value = cols; document.querySelector("#rows").value = rows;
+      state.statsValid = false;
       render();
+      if (saved && !saved.revision && state.revision === 1) {
+        setTimeout(() => alertModal("旧稿已迁移", "检测到旧版方案没有基准修订号，已按首版（修订号1）迁移。后续保存将生成新的修订号。"), 50);
+      }
     }
+
     function render() {
-      palette.innerHTML = colors.map((c, i) => '<button class="swatch '+(i===active?'active':'')+'" data-color="'+i+'" style="background:'+c+'"></button>').join("");
+      palette.innerHTML = colors.map((c, i) => '<button class="swatch ' + (i === active ? 'active' : '') + '" data-color="' + i + '" style="background:' + c + '"></button>').join("");
       palette.querySelectorAll("[data-color]").forEach(el => el.onclick = () => { active = Number(el.dataset.color); render(); });
-      grid.style.gridTemplateColumns = "repeat("+cols+", 1fr)";
-      grid.innerHTML = cells.map((v, i) => '<div class="cell" data-i="'+i+'" style="background:'+colors[v]+'"></div>').join("");
+      grid.style.gridTemplateColumns = "repeat(" + cols + ", 1fr)";
+      grid.innerHTML = cells.map((v, i) => {
+        let cls = "cell", style = "background:" + colors[v];
+        if (merge && merge.conflicts[i]) {
+          const c = merge.conflicts[i];
+          if (c.choice === "theirs") { cls += " conflict-theirs"; style = "background:" + colors[c.theirs]; }
+          else if (c.choice === "ours") { cls += " conflict-ours"; style = "background:" + colors[c.ours]; }
+          else { cls += " conflict"; style = "background:" + colors[c.ours]; }
+        }
+        return '<div class="' + cls + '" data-i="' + i + '" style="' + style + '"></div>';
+      }).join("");
       grid.querySelectorAll(".cell").forEach(el => {
-        el.onpointerdown = () => { dragging = true; paint(Number(el.dataset.i)); };
-        el.onpointerenter = () => { if (dragging) paint(Number(el.dataset.i)); };
+        el.onpointerdown = () => {
+          if (merge) { chooseConflict(Number(el.dataset.i)); return; }
+          dragging = true; paint(Number(el.dataset.i));
+        };
+        el.onpointerenter = () => { if (dragging && !merge) paint(Number(el.dataset.i)); };
       });
       window.onpointerup = () => dragging = false;
+      mergeBanner.style.display = merge ? "block" : "none";
+      staleBanner.style.display = state.statsValid ? "none" : "block";
+      updateStatusBar();
+      updateButtons();
       renderStats();
     }
+
+    function updateStatusBar() {
+      const revTxt = state.revision > 0 ? ("修订号 " + state.revision) : "未保存";
+      const baseTxt = state.baseRevision > 0 ? (" · 基准 " + state.baseRevision) : "";
+      const st = state.statsValid ? '<span class="ok">统计有效</span>' : '<span class="warn">统计已失效</span>';
+      statusBar.innerHTML = "当前方案：" + revTxt + baseTxt + " · " + st;
+    }
+
+    function updateButtons() {
+      const unresolved = merge ? Object.keys(merge.conflicts).filter(i => merge.conflicts[i].choice === null).length : 0;
+      document.querySelector("#saveBtn").disabled = unresolved > 0;
+      document.querySelector("#pkgBtn").disabled = unresolved > 0;
+      document.querySelector("#exportBtn").disabled = !!merge;
+      document.querySelector("#mergeBtn").disabled = !!merge;
+    }
+
+    function markDirty() { state.statsValid = false; }
+
     function snapshot() { undo.push([...cells]); redo = []; if (undo.length > 50) undo.shift(); }
     function paint(i) {
       snapshot();
       const targets = pattern(i);
       targets.forEach(t => { if (t >= 0 && t < cells.length) cells[t] = active; });
+      markDirty();
       render();
     }
     function pattern(i) {
       const x = i % cols, y = Math.floor(i / cols);
-      if (block === "cross") return [i, idx(x-1,y), idx(x+1,y), idx(x,y-1), idx(x,y+1)].filter(v => v !== null);
-      if (block === "diamond") return [idx(x,y-1), idx(x-1,y), i, idx(x+1,y), idx(x,y+1)].filter(v => v !== null);
+      if (block === "cross") return [i, idx(x - 1, y), idx(x + 1, y), idx(x, y - 1), idx(x, y + 1)].filter(v => v !== null);
+      if (block === "diamond") return [idx(x, y - 1), idx(x - 1, y), i, idx(x + 1, y), idx(x, y + 1)].filter(v => v !== null);
       return [i];
     }
-    function idx(x,y) { return x < 0 || x >= cols || y < 0 || y >= rows ? null : y * cols + x; }
-    function renderStats() {
-      const counts = colors.map((_, i) => cells.filter(v => v === i).length);
-      stats.innerHTML = counts.map((n, i) => '<div class="stat"><span><span style="display:inline-block;width:14px;height:14px;background:'+colors[i]+'"></span> 色线'+i+'</span><b>'+n+'</b></div>').join("");
-      preview.innerHTML = Array.from({length: 36}, (_, i) => '<div class="mini" style="background:'+colors[cells[(i % 6) + Math.floor(i / 6) * cols] || colors[0]]+'"></div>').join("");
+    function idx(x, y) { return x < 0 || x >= cols || y < 0 || y >= rows ? null : y * cols + x; }
+
+    function computeStats() {
+      const usage = colors.map((color, i) => ({ color, count: cells.filter(v => v === i).length }));
       const riskRows = [];
       for (let y = 0; y < rows; y++) {
         let switches = 0;
-        for (let x = 1; x < cols; x++) if (cells[y*cols+x] !== cells[y*cols+x-1]) switches++;
+        for (let x = 1; x < cols; x++) if (cells[y * cols + x] !== cells[y * cols + x - 1]) switches++;
         if (switches > cols * .62) riskRows.push(y + 1);
       }
-      risk.innerHTML = riskRows.length ? '<p class="warning">第'+riskRows.join("、")+'行换色过密，可能断线。</p>' : '<p>暂无明显断线风险。</p>';
+      state.lastComputed = { usage, riskRows, at: Date.now(), rev: state.revision };
+      state.statsValid = true;
     }
-    document.querySelectorAll("[data-block]").forEach(btn => btn.onclick = () => block = btn.dataset.block);
-    document.querySelector("#newBtn").onclick = () => { undo = []; redo = []; init(false); };
-    document.querySelector("#undoBtn").onclick = () => { if (!undo.length) return; redo.push([...cells]); cells = undo.pop(); render(); };
-    document.querySelector("#redoBtn").onclick = () => { if (!redo.length) return; undo.push([...cells]); cells = redo.pop(); render(); };
-    document.querySelector("#saveBtn").onclick = () => localStorage.setItem("zfl31Pattern", JSON.stringify({ cols, rows, cells }));
-    document.querySelector("#exportBtn").onclick = () => {
-      const data = { cols, rows, cells, usage: colors.map((color, i) => ({ color, count: cells.filter(v => v === i).length })) };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "brocade-pattern.json"; a.click(); URL.revokeObjectURL(a.href);
+
+    function renderStats() {
+      const counts = colors.map((_, i) => cells.filter(v => v === i).length);
+      const dim = state.statsValid ? "" : " dimmed";
+      stats.innerHTML = counts.map((n, i) => '<div class="stat' + dim + '"><span><span style="display:inline-block;width:14px;height:14px;background:' + colors[i] + '"></span> 色线' + i + '</span><b>' + n + '</b></div>').join("");
+      preview.innerHTML = Array.from({ length: 36 }, (_, i) => '<div class="mini" style="background:' + colors[cells[(i % 6) + Math.floor(i / 6) * cols] || colors[0]] + '"></div>').join("");
+      const riskRows = [];
+      for (let y = 0; y < rows; y++) {
+        let switches = 0;
+        for (let x = 1; x < cols; x++) if (cells[y * cols + x] !== cells[y * cols + x - 1]) switches++;
+        if (switches > cols * .62) riskRows.push(y + 1);
+      }
+      risk.innerHTML = riskRows.length
+        ? '<p class="warning' + dim + '">第' + riskRows.join("、") + '行换色过密，可能断线。</p>'
+        : '<p' + dim + '>暂无明显断线风险。</p>';
+    }
+
+    function saveWorking() {
+      const data = { cols, rows, cells: cells.slice(), revision: state.revision, baseRevision: state.baseRevision };
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+      catch (e) { failWrite(e); }
+    }
+
+    function saveRevision() {
+      if (merge && Object.keys(merge.conflicts).some(i => merge.conflicts[i].choice === null)) {
+        return alertModal("无法保存", "存在未处理的冲突格。请逐格选择我方/对方颜色，全部处理完才能保存。");
+      }
+      const revStore = loadJSON(REV_KEY, { head: 0, revisions: {} });
+      const n = revStore.head + 1;
+      revStore.revisions[String(n)] = { cols, rows, cells: cells.slice(), createdAt: Date.now(), note: "修订号 " + n };
+      revStore.head = n;
+      try { saveJSON(REV_KEY, revStore); }
+      catch (e) { return failWrite(e); }
+      state.revision = n; state.baseRevision = n;
+      computeStats();
+      saveWorking();
+      updateStatusBar();
+      render();
+      alertModal("已保存", "已生成修订号 " + n + "，基准修订号已更新为 " + n + "。");
+    }
+
+    function loadRevision(n) {
+      const revStore = loadJSON(REV_KEY, { head: 0, revisions: {} });
+      const r = revStore.revisions[String(n)];
+      if (!r) return alertModal("无法恢复", "修订号 " + n + " 不存在。");
+      cols = r.cols; rows = r.rows; cells = r.cells.slice();
+      state.revision = n; state.baseRevision = n; state.statsValid = false;
+      undo = []; redo = []; merge = null;
+      document.querySelector("#cols").value = cols; document.querySelector("#rows").value = rows;
+      saveWorking();
+      closeModal();
+      render();
+    }
+
+    function generatePackage() {
+      if (merge && Object.keys(merge.conflicts).some(i => merge.conflicts[i].choice === null)) {
+        return alertModal("无法生成交付包", "存在未处理的冲突格。请逐格选择我方/对方颜色，全部处理完才能生成交付包。");
+      }
+      computeStats();
+      const pkgs = loadJSON(PKG_KEY, []);
+      const pkg = {
+        id: uid(), rev: state.revision, createdAt: Date.now(),
+        snapshot: { cols, rows, cells: cells.slice(), usage: state.lastComputed.usage, riskRows: state.lastComputed.riskRows }
+      };
+      pkgs.push(pkg);
+      try { saveJSON(PKG_KEY, pkgs); }
+      catch (e) { return failWrite(e); }
+      render();
+      alertModal("交付包已生成", "交付包已按当前格子重算用色统计与断线风险并保存快照。旧交付包快照保留不变。");
+    }
+
+    function openPackages() {
+      const pkgs = loadJSON(PKG_KEY, []).slice().reverse();
+      const body = pkgs.length ? pkgs.map(p => {
+        const riskTxt = p.snapshot.riskRows.length ? ("断线风险：第" + p.snapshot.riskRows.join("、") + "行") : "无明显断线风险";
+        return '<div class="pkg-row"><div><b>交付包 ' + p.id + '</b><div class="pkg-meta">修订号 ' + p.rev + ' · ' + fmtTime(p.createdAt) + ' · ' + riskTxt + '</div></div>' +
+          '<button class="secondary" data-view="' + p.id + '">查看快照</button></div>';
+      }).join("") : '<p class="hint">暂无交付包。生成交付包时会按当前格子重算统计与断线风险，并保留快照。</p>';
+      openModal("交付包（旧包保留快照）", body, '<button id="closePkgBtn" class="secondary">关闭</button>');
+      modalBox.querySelectorAll("[data-view]").forEach(b => b.onclick = () => viewPackage(b.dataset.view));
+      modalBox.querySelector("#closePkgBtn").onclick = closeModal;
+    }
+
+    function viewPackage(id) {
+      const p = loadJSON(PKG_KEY, []).find(x => x.id === id);
+      if (!p) return;
+      const gridStyle = "grid-template-columns:repeat(" + p.snapshot.cols + ",1fr)";
+      const mini = p.snapshot.cells.map(v => '<div class="mini" style="background:' + colors[v] + '"></div>').join("");
+      const usage = p.snapshot.usage.map(u => '<div class="stat"><span><span class="chip" style="background:' + u.color + '"></span> 色线</span><b>' + u.count + '</b></div>').join("");
+      const riskTxt = p.snapshot.riskRows.length ? '<p class="warning">第' + p.snapshot.riskRows.join("、") + '行换色过密，可能断线。</p>' : '<p>暂无明显断线风险。</p>';
+      const body = '<p class="hint">修订号 ' + p.rev + ' · ' + fmtTime(p.createdAt) + '</p>' +
+        '<div class="snapshot-grid" style="' + gridStyle + '">' + mini + '</div>' +
+        '<h4>用色统计</h4><div class="stats">' + usage + '</div>' +
+        '<h4>断线风险</h4>' + riskTxt;
+      openModal("交付包快照 " + p.id, body, '<button id="closeSnapBtn" class="secondary">关闭</button>');
+      modalBox.querySelector("#closeSnapBtn").onclick = closeModal;
+    }
+
+    function openHistory() {
+      const revStore = loadJSON(REV_KEY, { head: 0, revisions: {} });
+      const revs = Object.values(revStore.revisions).sort((a, b) => b.createdAt - a.createdAt);
+      const body = revs.length ? revs.map(r =>
+        '<div class="rev-row"><div><b>修订号 ' + r.rev + '</b><div class="pkg-meta">' + fmtTime(r.createdAt) + ' · ' + r.cols + '×' + r.rows + ' · ' + (r.note || "") + '</div></div>' +
+        '<button class="secondary" data-load="' + r.rev + '">载入此修订</button></div>').join("")
+        : '<p class="hint">暂无修订记录。</p>';
+      const recover = '<div class="recover-row"><label style="margin:0">按修订号恢复</label><input id="recoverRev" type="number" min="1" placeholder="修订号">' +
+        '<button id="recoverBtn">恢复</button></div>';
+      openModal("修订历史 / 按修订号恢复", body + recover, '<button id="closeHistBtn" class="secondary">关闭</button>');
+      modalBox.querySelectorAll("[data-load]").forEach(b => b.onclick = () => loadRevision(Number(b.dataset.load)));
+      modalBox.querySelector("#recoverBtn").onclick = () => {
+        const n = Number(modalBox.querySelector("#recoverRev").value);
+        if (n > 0) loadRevision(n);
+      };
+      modalBox.querySelector("#closeHistBtn").onclick = closeModal;
+    }
+
+    function failWrite(e) {
+      openModal("写入失败", "<p>本地存储写入失败：" + (e && e.message ? e.message : e) + "</p><p>可按修订号恢复到已保存的版本，未保存的改动可能丢失。</p>",
+        '<button id="recoverFromFail">按修订号恢复</button><button id="closeFailBtn" class="secondary">关闭</button>');
+      modalBox.querySelector("#recoverFromFail").onclick = () => { closeModal(); setTimeout(openHistory, 60); };
+      modalBox.querySelector("#closeFailBtn").onclick = closeModal;
+    }
+
+    function openMerge() { fileInput.value = ""; fileInput.click(); }
+    fileInput.onchange = () => {
+      const f = fileInput.files[0];
+      if (f) readDraft(f);
     };
+
+    function readDraft(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        let d;
+        try { d = JSON.parse(reader.result); }
+        catch (e) { return alertModal("回传文件无法解析", "请确认是本排版台导出的JSON草稿。"); }
+        if (!Array.isArray(d.cells) || !d.cols || !d.rows) return alertModal("回传文件缺少数据", "草稿缺少格子或尺寸信息，无法三路合并。");
+        let baseRev = (typeof d.baseRevision === "number") ? d.baseRevision : 1;
+        const revStore = loadJSON(REV_KEY, { head: 0, revisions: {} });
+        if (!revStore.revisions[String(baseRev)]) {
+          if (typeof d.baseRevision !== "number") {
+            revStore.head = Math.max(revStore.head, 1);
+            revStore.revisions["1"] = { cols: d.cols, rows: d.rows, cells: d.cells.slice(), createdAt: Date.now(), note: "旧稿回传迁移（首版）" };
+            try { saveJSON(REV_KEY, revStore); } catch (e) { return failWrite(e); }
+          } else {
+            return alertModal("基准修订号不存在", "基准修订号 " + baseRev + " 在本机修订记录中不存在，无法做三路合并。");
+          }
+        }
+        const base = revStore.revisions[String(baseRev)];
+        if (base.cols !== d.cols || base.rows !== d.rows) {
+          return alertModal("尺寸不一致", "回传稿尺寸（" + d.cols + "×" + d.rows + "）与基准修订号 " + baseRev + "（" + base.cols + "×" + base.rows + "）不一致，无法逐格三路合并。");
+        }
+        const fingerprint = draftFP(d);
+        const imp = loadJSON(IMP_KEY, { fps: {} });
+        if (imp.fps[fingerprint]) {
+          const rec = imp.fps[fingerprint];
+          return alertModal("重复回传已忽略", "该回传稿已处理过（" + rec.at + "）。重复回传只认首次，本次导入已忽略。");
+        }
+        const result = cells.slice();
+        const conflicts = {};
+        let autoCount = 0;
+        for (let i = 0; i < result.length; i++) {
+          const b = base.cells[i], o = cells[i], t = d.cells[i];
+          if (t === b) { result[i] = o; }
+          else if (o === b) { result[i] = t; autoCount++; }
+          else if (o === t) { result[i] = o; autoCount++; }
+          else { result[i] = o; conflicts[i] = { ours: o, theirs: t, choice: null }; }
+        }
+        merge = { result, conflicts, baseRev, fingerprint, draftName: file.name, autoCount };
+        undo = []; redo = [];
+        openMergeModal();
+        render();
+      };
+      reader.readAsText(file);
+    }
+
+    function openMergeModal() {
+      const m = merge;
+      const body =
+        '<p>基准修订号 <b>' + m.baseRev + '</b>。自动合并 <b>' + m.autoCount + '</b> 格（只有一边改过或双方改后相同）；冲突 <b>' + Object.keys(m.conflicts).length + '</b> 格。</p>' +
+        '<p class="hint">冲突格双方改出不同颜色，已保留我方/对方两份值，请逐格选择。全部处理完才能保存或生成交付包。</p>' +
+        '<div class="toolbar" style="margin:10px 0"><button id="allOurs" class="secondary">全部保留我方</button><button id="allTheirs" class="secondary">全部采用对方</button></div>' +
+        '<div class="conflict-list" id="conflictList"></div>';
+      openModal("三路合并回传稿", body, '<button id="confirmMergeBtn" disabled>确认合并为未保存改动</button>');
+      modalBox.querySelector("#allOurs").onclick = () => setAllConflicts("ours");
+      modalBox.querySelector("#allTheirs").onclick = () => setAllConflicts("theirs");
+      modalBox.querySelector("#confirmMergeBtn").onclick = confirmMerge;
+      renderConflictList();
+    }
+
+    function renderConflictList() {
+      const list = modalBox.querySelector("#conflictList");
+      if (!list) return;
+      const m = merge;
+      const keys = Object.keys(m.conflicts);
+      if (!keys.length) { list.innerHTML = '<p class="hint">没有冲突格，可直接确认合并。</p>'; updateMergeConfirm(); return; }
+      list.innerHTML = keys.map(i => {
+        const c = m.conflicts[i];
+        const oursCls = c.choice === "ours" ? " pick-active" : "";
+        const theirsCls = c.choice === "theirs" ? " pick-active" : "";
+        return '<div class="conflict-row"><span class="num">格子 ' + i + '</span>' +
+          '<button class="secondary' + oursCls + '" data-i="' + i + '" data-choice="ours"><span class="chip" style="background:' + colors[c.ours] + '"></span>我方</button>' +
+          '<button class="secondary' + theirsCls + '" data-i="' + i + '" data-choice="theirs"><span class="chip" style="background:' + colors[c.theirs] + '"></span>对方</button></div>';
+      }).join("");
+      list.querySelectorAll("button[data-choice]").forEach(b => b.onclick = () => setConflictChoice(Number(b.dataset.i), b.dataset.choice));
+      updateMergeConfirm();
+    }
+
+    function setConflictChoice(i, choice) {
+      if (!merge || !merge.conflicts[i]) return;
+      merge.conflicts[i].choice = choice;
+      merge.result[i] = choice === "theirs" ? merge.conflicts[i].theirs : merge.conflicts[i].ours;
+      render();
+      renderConflictList();
+    }
+
+    function chooseConflict(i) {
+      if (!merge || !merge.conflicts[i]) return;
+      const c = merge.conflicts[i];
+      const next = c.choice === null ? "theirs" : (c.choice === "theirs" ? "ours" : "theirs");
+      setConflictChoice(i, next);
+    }
+
+    function setAllConflicts(choice) {
+      if (!merge) return;
+      Object.keys(merge.conflicts).forEach(i => {
+        merge.conflicts[i].choice = choice;
+        merge.result[i] = choice === "theirs" ? merge.conflicts[i].theirs : merge.conflicts[i].ours;
+      });
+      render();
+      renderConflictList();
+    }
+
+    function updateMergeConfirm() {
+      const btn = modalBox.querySelector("#confirmMergeBtn");
+      if (!btn) return;
+      const unresolved = merge ? Object.keys(merge.conflicts).filter(i => merge.conflicts[i].choice === null).length : 0;
+      btn.disabled = unresolved > 0;
+      btn.textContent = unresolved > 0 ? ("还有 " + unresolved + " 格冲突未处理") : "确认合并为未保存改动";
+    }
+
+    function confirmMerge() {
+      if (!merge) return;
+      if (Object.keys(merge.conflicts).some(i => merge.conflicts[i].choice === null)) {
+        return alertModal("还有冲突未处理", "请逐格选择我方/对方颜色后再确认。");
+      }
+      cells = merge.result.slice();
+      state.baseRevision = merge.baseRev;
+      const imp = loadJSON(IMP_KEY, { fps: {} });
+      imp.fps[merge.fingerprint] = { at: fmtTime(Date.now()), name: merge.draftName, baseRev: merge.baseRev };
+      try { saveJSON(IMP_KEY, imp); }
+      catch (e) { return failWrite(e); }
+      merge = null;
+      state.statsValid = false;
+      undo = []; redo = [];
+      saveWorking();
+      closeModal();
+      updateStatusBar();
+      render();
+      alertModal("合并完成", "回传稿已应用为未保存改动。请保存方案（生成新修订号）或生成交付包；重复回传只认首次。");
+    }
+
+    function exportDraft() {
+      if (merge) return alertModal("请先处理冲突", "合并处理中不能导出草稿。");
+      const d = {
+        schema: "zfl31", draftId: uid(),
+        baseRevision: state.baseRevision || 1,
+        revision: state.revision,
+        cols, rows, cells: cells.slice(),
+        exportedAt: Date.now()
+      };
+      const blob = new Blob([JSON.stringify(d, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "brocade-draft-r" + (state.revision || 0) + ".json";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function openModal(title, body, actionsHTML) {
+      modalBox.innerHTML = '<h3>' + title + '</h3><div>' + body + '</div><div class="modal-actions">' + actionsHTML + "</div>";
+      modalOverlay.classList.add("open");
+    }
+    function closeModal() { modalOverlay.classList.remove("open"); }
+    function alertModal(title, msg) {
+      openModal(title, '<p>' + msg + '</p>', '<button id="alertOkBtn">知道了</button>');
+      modalBox.querySelector("#alertOkBtn").onclick = closeModal;
+    }
+    modalOverlay.onclick = (e) => { if (e.target === modalOverlay) closeModal(); };
+
+    document.querySelectorAll("[data-block]").forEach(btn => btn.onclick = () => block = btn.dataset.block);
+    document.querySelector("#newBtn").onclick = () => {
+      undo = []; redo = []; merge = null;
+      cols = Number(document.querySelector("#cols").value); rows = Number(document.querySelector("#rows").value);
+      cells = Array(cols * rows).fill(0);
+      state.revision = 0; state.baseRevision = 0; state.statsValid = false;
+      saveWorking();
+      render();
+    };
+    document.querySelector("#undoBtn").onclick = () => { if (merge || !undo.length) return; redo.push([...cells]); cells = undo.pop(); markDirty(); render(); };
+    document.querySelector("#redoBtn").onclick = () => { if (merge || !redo.length) return; undo.push([...cells]); cells = redo.pop(); markDirty(); render(); };
+    document.querySelector("#saveBtn").onclick = saveRevision;
+    document.querySelector("#mergeBtn").onclick = openMerge;
+    document.querySelector("#pkgBtn").onclick = generatePackage;
+    document.querySelector("#historyBtn").onclick = openHistory;
+    document.querySelector("#exportBtn").onclick = exportDraft;
     init();
   </script>
 </body>
