@@ -9,31 +9,67 @@
     body { margin: 0; font-family: Arial, "PingFang SC", sans-serif; background: #f3efe7; color: #282018; }
     header { padding: 18px 24px; background: #fffaf2; border-bottom: 1px solid #d9cdbc; display: flex; justify-content: space-between; gap: 16px; align-items: center; }
     h1 { margin: 0; font-size: 26px; }
+    h2 { font-size: 16px; margin: 16px 0 8px; }
     button { border: 0; border-radius: 8px; padding: 10px 13px; background: #8d3e37; color: #fff; font-weight: 800; cursor: pointer; }
     button.secondary { background: #71675c; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
     input, select { width: 100%; border: 1px solid #d9cdbc; border-radius: 6px; padding: 9px; font: inherit; background: #fff; }
     label { display: block; margin: 9px 0 5px; color: #76695e; font-size: 13px; }
-    .app { display: grid; grid-template-columns: 280px 1fr 320px; gap: 16px; padding: 16px; }
-    .panel { background: #fffaf2; border: 1px solid #d9cdbc; border-radius: 8px; padding: 14px; }
+    .app { display: grid; grid-template-columns: 280px 1fr 340px; gap: 16px; padding: 16px; }
+    .panel { background: #fffaf2; border: 1px solid #d9cdbc; border-radius: 8px; padding: 14px; align-self: start; }
     .grid { display: grid; gap: 2px; margin: 0 auto; width: min(100%, 720px); border: 6px solid #72533c; background: #72533c; }
     .cell { aspect-ratio: 1; background: #f8ead2; cursor: pointer; border-radius: 2px; }
     .palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
     .swatch { aspect-ratio: 1; border-radius: 8px; border: 3px solid transparent; cursor: pointer; }
     .swatch.active { border-color: #1f1b16; }
     .blocks { display: grid; gap: 8px; }
-    .stats { display: grid; gap: 8px; }
+    .stats { display: grid; gap: 4px; }
     .stat { display: flex; justify-content: space-between; border-bottom: 1px solid #e1d5c5; padding: 6px 0; }
     .preview { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; border: 1px solid #d9cdbc; padding: 6px; margin-top: 8px; }
     .mini { aspect-ratio: 1; border-radius: 2px; }
     .toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .warning { color: #a03a2e; font-weight: 800; }
+    .ok { color: #355b38; font-weight: 700; }
+    .muted { color: #8a7d70; font-size: 12px; }
+    .badge { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 9px; margin-left: 6px; vertical-align: middle; }
+    .badge.ok { background: #e2ece0; color: #355b38; }
+    .badge.warn { background: #f6e0d4; color: #a03a2e; }
+    .badge.info { background: #dde8ee; color: #1f5f78; }
+    #messages { display: grid; gap: 6px; margin: 8px 0; }
+    .msg { border-radius: 6px; padding: 8px 10px; font-size: 13px; line-height: 1.45; }
+    .msg.info { background: #eef3f6; border: 1px solid #c8d9e1; }
+    .msg.warn { background: #f9e7e1; border: 1px solid #dfb7a8; }
+    .msg.ok { background: #e9f0e6; border: 1px solid #bfd2b8; }
+    .cell.conflict { cursor: pointer; animation: pulse 1.1s infinite; }
+    .cell.resolved { cursor: pointer; box-shadow: inset 0 0 0 3px #355b38; }
+    .cell.auto { outline: 2px dashed #1f5f78; outline-offset: -3px; }
+    @keyframes pulse { 0%,100% { box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px #a03a2e; } 50% { box-shadow: inset 0 0 0 2px #fff, 0 0 0 3px #e98c52; } }
+    .filebtn { display: block; text-align: center; border-radius: 8px; padding: 9px; font-weight: 800; font-size: 13px; cursor: pointer; background: #71675c; color: #fff; }
+    .filebtn input { display: none; }
+    .filebtn.accent { background: #8d3e37; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .itemlist { display: grid; gap: 6px; margin-top: 8px; }
+    .item { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-bottom: 1px solid #e1d5c5; padding: 5px 0; font-size: 13px; }
+    .item button { padding: 5px 9px; font-size: 12px; }
+    details { margin-top: 10px; }
+    summary { cursor: pointer; font-weight: 700; font-size: 13px; color: #76695e; }
+    #sessionBadge { display: none; margin-top: 6px; font-size: 12px; background: #dde8ee; color: #1f5f78; border-radius: 6px; padding: 6px 9px; font-weight: 700; }
     @media (max-width: 1000px) { header { display: block; } .app { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <header>
-    <div><h1>手工织锦纹样排版台</h1><div>绘制经纬网格纹样，统计色线用量并保存方案。</div></div>
-    <div class="toolbar"><button id="saveBtn">保存方案</button><button id="exportBtn" class="secondary">导出JSON</button></div>
+    <div>
+      <h1>手工织锦纹样排版台</h1>
+      <div>绘制经纬网格纹样，统计色线用量，离线回传三路合并后保存方案。</div>
+      <div id="sessionBadge" class="msg info" style="display:none;margin-top:6px"></div>
+    </div>
+    <div class="toolbar" style="grid-template-columns: repeat(4, 1fr);">
+      <button id="saveBtn">正式保存</button>
+      <button id="draftBtn" class="secondary">导出离线稿</button>
+      <button id="returnBtn" class="secondary">导出回传稿</button>
+      <button id="pkgBtn" class="secondary">生成交付包</button>
+    </div>
   </header>
   <main class="app">
     <aside class="panel">
@@ -50,85 +86,570 @@
         <button data-block="diamond" class="secondary">小菱形</button>
       </div>
     </aside>
-    <section class="panel"><div class="grid" id="grid"></div></section>
+    <section class="panel">
+      <div id="statusLine" class="muted" style="margin-bottom:8px"></div>
+      <div class="grid" id="grid"></div>
+    </section>
     <aside class="panel">
+      <h2>离线回传</h2>
+      <label>回传人（可选，写入回传稿）</label>
+      <input id="author" type="text" placeholder="例如：打样间王师傅">
+      <div class="row2" style="margin-top:8px">
+        <label class="filebtn accent">回传合并<input id="returnFile" type="file" accept="application/json,.json"></label>
+        <label class="filebtn">载入离线稿编辑<input id="draftFile" type="file" accept="application/json,.json"></label>
+      </div>
+      <div id="messages"></div>
+      <div id="mergePanel"></div>
+
       <h2>操作</h2>
       <div class="toolbar"><button id="undoBtn" class="secondary">撤销</button><button id="redoBtn" class="secondary">重做</button></div>
-      <p>点击填色，按住拖动可连续填色。</p>
-      <h2>用色统计</h2>
+      <p class="muted">点击填色，按住拖动可连续填色。回传合并进行中时暂停填色，先处理冲突格。</p>
+
+      <h2>用色统计 <span id="statsBadge"></span></h2>
       <div class="stats" id="stats"></div>
       <h2>重复单元预览</h2>
       <div class="preview" id="preview"></div>
-      <h2>断线风险</h2>
+      <h2>断线风险 <span id="riskBadge"></span></h2>
       <div id="risk"></div>
+
+      <h2>交付包 <span id="pkgBadge"></span></h2>
+      <div id="packagePanel"></div>
+
+      <details>
+        <summary>修订历史 / 按修订号恢复</summary>
+        <div class="itemlist" id="historyList"></div>
+      </details>
     </aside>
   </main>
   <script>
+    const STORAGE_KEY = "zfl31Pattern";
     const colors = ["#f7e7c4","#a6322d","#1f5f78","#d6a437","#355b38","#713d7b","#1e1b18","#e98c52"];
-    const grid = document.querySelector("#grid");
-    const palette = document.querySelector("#palette");
-    const stats = document.querySelector("#stats");
-    const preview = document.querySelector("#preview");
-    const risk = document.querySelector("#risk");
-    let cols = 18, rows = 14, active = 1, block = "dot", dragging = false;
-    let cells = [];
-    let undo = [], redo = [];
-    function init(loadSaved = true) {
-      const saved = loadSaved && JSON.parse(localStorage.getItem("zfl31Pattern") || "null");
-      if (saved) { cols = saved.cols; rows = saved.rows; cells = saved.cells; }
-      else { cols = Number(document.querySelector("#cols").value); rows = Number(document.querySelector("#rows").value); cells = Array(cols * rows).fill(0); }
-      document.querySelector("#cols").value = cols; document.querySelector("#rows").value = rows;
+    const $ = s => document.querySelector(s);
+    const grid = $("#grid"), palette = $("#palette"), stats = $("#stats"),
+          preview = $("#preview"), risk = $("#risk");
+
+    // ---- 方案状态 ----
+    let plan = null;                 // v2 方案：{v,id,cols,rows,revision,cells,snapshots,history,packages,packageRevision,processedImports}
+    let cols = 18, rows = 14;
+    let cells = [];                  // 当前工作稿（可能含未保存修改或待处理合并）
+    let active = 1, block = "dot", dragging = false;
+    let undoStack = [], redoStack = [];
+    let pending = null;              // 待确认的三路合并 {importId,fingerprint,baseRevision,merged,conflicts,autoChanged,legacy}
+    let editSession = null;          // 离线稿编辑会话 {draftId,planId,baseRevision}
+    let flash = null;                // {type:'info'|'warn'|'ok', text}
+    // 测试钩子：置 true 后下一次写入会抛错，用于演示“写入失败按修订号恢复”
+    // window.__zflForceWriteFailure = true
+
+    // ---------- 工具 ----------
+    const clone = c => c.slice();
+    const emptyCells = n => Array(n).fill(0);
+    const nowISO = () => new Date().toISOString();
+    const shortId = id => String(id).slice(-6);
+    function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 9); }
+    function hashStr(s) {
+      let h = 2166136261;
+      for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+      return (h >>> 0).toString(16);
+    }
+    const fingerprint = c => c.length + ":" + hashStr(c.join("."));
+    function isDirty() { return !plan || JSON.stringify(cells) !== JSON.stringify(plan.snapshots[plan.revision]); }
+    function downloadJSON(obj, name) {
+      const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = name; a.click();
+      URL.revokeObjectURL(a.href);
+    }
+    function readJSONFile(file, cb) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try { cb(JSON.parse(reader.result)); }
+        catch (e) { setFlash("warn", "文件不是有效的 JSON：" + e.message); render(); }
+      };
+      reader.readAsText(file);
+    }
+    function setFlash(type, text) { flash = { type, text }; }
+
+    // ---------- 方案建立 / 迁移 ----------
+    function createPlan(c, r, firstCells, note) {
+      const base = firstCells ? clone(firstCells) : emptyCells(c * r);
+      return {
+        v: 2, id: uid(), cols: c, rows: r,
+        revision: 1,
+        cells: clone(base),
+        snapshots: { 1: clone(base) },       // 每个修订号保留格子快照（合并基准 & 恢复依据）
+        history: [{ revision: 1, at: nowISO(), note: note || "首版" }],
+        packageRevision: null,               // 当前交付包对应的修订号
+        packages: [],                        // 历次交付包快照（旧包永久保留）
+        processedImports: []                 // 已接收回传（去重：重复回传只认首次）
+      };
+    }
+    function loadInitialPlan() {
+      let raw = null;
+      try { raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"); } catch (e) { raw = null; }
+      if (raw && raw.v === 2) return raw;
+      if (raw && raw.cols && raw.rows && Array.isArray(raw.cells)) {
+        // 旧稿没有基准修订号：按首版迁移（r1，基准 r0 视为空网格）
+        const p = createPlan(raw.cols, raw.rows, raw.cells, "旧稿无基准修订号，按首版迁移");
+        setFlash("warn", "检测到旧稿没有基准修订号，已按首版迁移：当前修订号 r1，合并基准 r0（空网格）。");
+        return p;
+      }
+      return createPlan(Number($("#cols").value), Number($("#rows").value));
+    }
+
+    // ---------- 持久化：写入失败按修订号恢复 ----------
+    function persist() {
+      const lastGoodRaw = localStorage.getItem(STORAGE_KEY);
+      try {
+        if (window.__zflForceWriteFailure) { window.__zflForceWriteFailure = false; throw new Error("模拟写入失败"); }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(plan));   // setItem 原子：失败时旧值不动
+        return true;
+      } catch (err) {
+        let restored = null;
+        try { restored = lastGoodRaw ? JSON.parse(lastGoodRaw) : null; } catch (e) { restored = null; }
+        if (restored && restored.v === 2) {
+          // 按修订号恢复到上一份正式落库的方案
+          plan = restored;
+          cols = plan.cols; rows = plan.rows;
+          cells = clone(plan.cells);
+          pending = null; editSession = null;
+          undoStack = []; redoStack = [];
+          setFlash("warn", "写入失败（" + err.message + "），已按修订号恢复到 r" + plan.revision + "，本次改动未入库。");
+        } else {
+          setFlash("warn", "写入失败（" + err.message + "），且没有可用的历史修订号，本次改动未保存。");
+        }
+        render();
+        return false;
+      }
+    }
+
+    // ---------- 三路合并 ----------
+    // base = 共同基准快照，ours = 本端工作稿，theirs = 回传稿
+    function threeWayMerge(base, ours, theirs) {
+      const merged = clone(ours);
+      const conflicts = [];
+      const autoChanged = [];
+      for (let i = 0; i < ours.length; i++) {
+        const b = base[i], o = ours[i], t = theirs[i];
+        if (o === t) {
+          merged[i] = o;                                  // 两边一致（都没改或改成同色）
+        } else if (b === o) {
+          merged[i] = t;                                  // 只远端改过 → 自动合并
+          if (t !== o) autoChanged.push(i);
+        } else if (b === t) {
+          merged[i] = o;                                  // 只本端改过 → 自动合并
+        } else {
+          merged[i] = o;
+          conflicts.push({ i: i, ours: o, theirs: t, pick: null }); // 双方改成不同色 → 保留两份值
+        }
+      }
+      return { merged: merged, conflicts: conflicts, autoChanged: autoChanged };
+    }
+    function conflictMap() {
+      const m = {};
+      if (pending) pending.conflicts.forEach(c => { m[c.i] = c; });
+      return m;
+    }
+
+    // ---------- 离线回传 ----------
+    function handleReturn(draft) {
+      if (!draft || typeof draft !== "object" || !Array.isArray(draft.cells)) {
+        setFlash("warn", "回传文件内容无效，已拒绝。"); return render();
+      }
+      // 旧稿（含旧版导出 {cols,rows,cells,usage}）没有基准修订号：按首版迁移
+      let legacy = false;
+      if (draft.baseRevision === undefined || draft.baseRevision === null) {
+        legacy = true;
+        draft = Object.assign({}, draft, {
+          baseRevision: 0,
+          draftId: draft.draftId || ("legacy-" + fingerprint(draft.cells)),
+          importId: draft.importId || ("legacy-" + fingerprint(draft.cells))
+        });
+      }
+      if (draft.planId && draft.planId !== plan.id) {
+        setFlash("warn", "该回传稿属于另一份纹样方案，不能并入当前方案，已拒绝。"); return render();
+      }
+      if (draft.cols !== cols || draft.rows !== rows) {
+        setFlash("warn", "回传稿尺寸（" + draft.cols + "×" + draft.rows + "）与当前方案（" + cols + "×" + rows + "）不一致，已拒绝。");
+        return render();
+      }
+      // 重复回传只认首次：importId 优先，缺失时按内容指纹 + 基准修订号去重
+      const importId = draft.importId || ("fp:" + fingerprint(draft.cells));
+      const fp = fingerprint(draft.cells);
+      const seen = plan.processedImports.some(x => x.importId === importId)
+        || plan.processedImports.some(x => x.fingerprint === fp && x.baseRevision === draft.baseRevision);
+      if (seen) {
+        setFlash("warn", "该回传已接收过（标识 " + String(importId).slice(0, 10) + "）。重复回传只认首次，本次已忽略，已有格子不受影响。");
+        return render();
+      }
+      // 取共同基准快照
+      let base;
+      if (draft.baseRevision === 0) {
+        base = emptyCells(cells.length);
+      } else {
+        base = plan.snapshots[draft.baseRevision];
+        if (!base) {
+          setFlash("warn", "找不到基准修订号 r" + draft.baseRevision + " 的格子快照，无法三路合并，已拒绝回传（避免后到稿盖掉已确认格子）。");
+          return render();
+        }
+      }
+      const result = threeWayMerge(base, cells, draft.cells);
+      pending = {
+        importId: importId, fingerprint: fp, baseRevision: draft.baseRevision,
+        merged: result.merged, conflicts: result.conflicts,
+        autoChanged: result.autoChanged, legacy: legacy,
+        author: draft.author || ""
+      };
+      cells = clone(result.merged);
+      undoStack = []; redoStack = [];
+      const totalChange = result.autoChanged.length + result.conflicts.length;
+      if (result.conflicts.length) {
+        setFlash("warn", (legacy ? "旧稿已按首版迁移（基准 r0）。" : "") +
+          "三路合并完成：" + result.autoChanged.length + " 格单边修改已自动合并，" +
+          result.conflicts.length + " 格双方改成不同色，需逐格选择后才能正式保存或生成交付包。");
+      } else {
+        setFlash("ok", (legacy ? "旧稿已按首版迁移（基准 r0）。" : "") +
+          "三路合并完成，无冲突：" + result.autoChanged.length + " 格自动合并" +
+          (totalChange === 0 ? "（内容与本端一致）" : "") + "。确认后请“正式保存”提交新修订号。");
+      }
       render();
     }
+    function discardPending() {
+      pending = null;
+      cells = clone(plan.cells);
+      undoStack = []; redoStack = [];
+      setFlash("info", "已放弃本次回传合并，工作稿恢复到 r" + plan.revision + "。");
+      render();
+    }
+    function pickConflict(c, choice) {
+      c.pick = choice;
+      cells[c.i] = c[choice];
+      render();
+    }
+    function resolveAll(choice) {
+      pending.conflicts.forEach(c => { c.pick = choice; cells[c.i] = c[choice]; });
+      render();
+    }
+
+    // ---------- 正式保存（提交修订号） ----------
+    function formalSave() {
+      if (pending && pending.conflicts.some(c => !c.pick)) {
+        setFlash("warn", "还有冲突格未选定，冲突处理完才能正式保存。"); return render();
+      }
+      if (!pending && !isDirty()) { setFlash("info", "工作稿与 r" + plan.revision + " 一致，无需保存。"); return render(); }
+      const nextRev = plan.revision + 1;
+      plan.snapshots[nextRev] = clone(cells);
+      plan.cells = clone(cells);
+      plan.revision = nextRev;
+      plan.history.push({
+        revision: nextRev, at: nowISO(),
+        note: pending ? ("合入离线回传（基准 r" + pending.baseRevision + (pending.author ? "，回传人：" + pending.author : "") + "）") : "工作稿编辑"
+      });
+      const wasPending = pending;
+      if (wasPending) {
+        plan.processedImports.push({
+          importId: wasPending.importId, fingerprint: wasPending.fingerprint,
+          baseRevision: wasPending.baseRevision, at: nowISO(), mergedTo: nextRev
+        });
+      }
+      pending = null;
+      undoStack = []; redoStack = [];
+      if (!persist()) return;  // 写入失败会在 persist() 内按修订号恢复
+      // 任一格色号变化 → 旧交付包失效（快照仍保留在 packages 中），需重新生成
+      setFlash("ok", "已正式保存为修订号 r" + nextRev + "。" +
+        (plan.packageRevision !== null && plan.packageRevision < nextRev
+          ? "格子已变化，旧交付包 r" + plan.packageRevision + " 保留为快照并已失效，请重新生成交付包。" : ""));
+      render();
+    }
+
+    // ---------- 派生数据：用色统计 / 断线风险 ----------
+    function computeUsage(c) { return colors.map((_, i) => c.filter(v => v === i).length); }
+    function computeRiskRows(c) {
+      const list = [];
+      for (let y = 0; y < rows; y++) {
+        let switches = 0;
+        for (let x = 1; x < cols; x++) if (c[y * cols + x] !== c[y * cols + x - 1]) switches++;
+        if (switches > cols * .62) list.push(y + 1);
+      }
+      return list;
+    }
+
+    // ---------- 交付包（重算 + 旧包快照保留） ----------
+    function buildPackagePayload(rev) {
+      const snap = plan.snapshots[rev];
+      return {
+        type: "brocade-delivery-package", v: 2,
+        planId: plan.id, revision: rev, generatedAt: nowISO(),
+        cols: cols, rows: rows, cells: clone(snap),
+        usage: colors.map((color, i) => ({ colorIndex: i, color: color, count: snap.filter(v => v === i).length })),
+        riskRows: computeRiskRows(snap)
+      };
+    }
+    function generatePackage() {
+      if (pending) { setFlash("warn", "回传合并尚未完成，冲突处理完才能生成交付包。"); return render(); }
+      if (isDirty()) { setFlash("warn", "工作稿有未保存的格色变化，请先正式保存，再按修订号生成交付包。"); return render(); }
+      const rev = plan.revision;
+      const payload = buildPackagePayload(rev);
+      // 旧交付包不从 packages 移除——全部保留为快照
+      plan.packages.push({ revision: rev, generatedAt: payload.generatedAt, payload: payload });
+      plan.packageRevision = rev;
+      if (!persist()) return;
+      downloadJSON(payload, "brocade-delivery-r" + rev + ".json");
+      setFlash("ok", "交付包已按修订号 r" + rev + " 重算并下载；历史交付包快照仍可在下方查看下载。");
+      render();
+    }
+
+    // ---------- 离线稿 / 回传稿 ----------
+    function exportOfflineDraft() {
+      if (pending) { setFlash("warn", "合并冲突处理完再导出离线稿。"); return render(); }
+      if (isDirty()) { setFlash("warn", "工作稿有未保存修改，请先正式保存，离线稿以已确认修订号为基准。"); return render(); }
+      const payload = {
+        type: "brocade-offline-draft", v: 2,
+        planId: plan.id, baseRevision: plan.revision, draftId: uid(),
+        exportedAt: nowISO(), cols: cols, rows: rows, cells: clone(plan.cells)
+      };
+      setFlash("info", "离线稿已导出：基准修订号 r" + plan.revision + "。打样间载入编辑后，导出回传稿即可合并。");
+      downloadJSON(payload, "brocade-offline-base-r" + plan.revision + ".json");
+    }
+    function exportReturn() {
+      if (pending) { setFlash("warn", "请先处理完当前合并，再导出回传稿。"); return render(); }
+      const baseRevision = editSession ? editSession.baseRevision : plan.revision;
+      const payload = {
+        type: "brocade-return", v: 2,
+        planId: editSession ? editSession.planId : plan.id,
+        draftId: editSession ? editSession.draftId : "direct",
+        importId: uid(), baseRevision: baseRevision,
+        author: $("#author").value.trim(),
+        returnedAt: nowISO(), cols: cols, rows: rows, cells: clone(cells)
+      };
+      setFlash("info", "回传稿已导出：基准修订号 r" + baseRevision + "，回传标识 " + payload.importId + "。重复回传同一文件时只认首次。");
+      downloadJSON(payload, "brocade-return-base-r" + baseRevision + "-" + payload.importId + ".json");
+    }
+    function loadDraftForEditing(draft) {
+      if (!draft || !Array.isArray(draft.cells) || draft.baseRevision === undefined) {
+        setFlash("warn", "离线稿文件内容有效，或不是含基准修订号的离线稿。"); return render();
+      }
+      editSession = { draftId: draft.draftId || uid(), planId: draft.planId || plan.id, baseRevision: draft.baseRevision };
+      cols = draft.cols; rows = draft.rows;
+      $("#cols").value = cols; $("#rows").value = rows;
+      cells = clone(draft.cells);
+      pending = null; undoStack = []; redoStack = [];
+      setFlash("info", "已载入离线稿进入离线编辑：基准修订号 r" + draft.baseRevision + "。编辑完成后点“导出回传稿”。");
+      render();
+    }
+
+    // ---------- 按修订号恢复 ----------
+    function recoverToRevision(rev) {
+      if (!plan.snapshots[rev]) { setFlash("warn", "修订号 r" + rev + " 的快照不存在，无法恢复。"); return render(); }
+      pending = null;
+      cells = clone(plan.snapshots[rev]);
+      undoStack = []; redoStack = [];
+      setFlash(rev === plan.revision ? "info" : "warn",
+        "已按修订号恢复 r" + rev + " 为工作稿" + (rev === plan.revision ? "（当前头版本）" : "，正式保存后将生成新修订号，原历史不会被覆盖。"));
+      render();
+    }
+
+    // ---------- 渲染 ----------
+    function badge(kind, text) { return '<span class="badge ' + kind + '">' + text + '</span>'; }
     function render() {
-      palette.innerHTML = colors.map((c, i) => '<button class="swatch '+(i===active?'active':'')+'" data-color="'+i+'" style="background:'+c+'"></button>').join("");
+      // 调色板
+      palette.innerHTML = colors.map((c, i) =>
+        '<button class="swatch ' + (i === active ? "active" : "") + '" data-color="' + i + '" style="background:' + c + '" title="色线' + i + '"></button>'
+      ).join("");
       palette.querySelectorAll("[data-color]").forEach(el => el.onclick = () => { active = Number(el.dataset.color); render(); });
-      grid.style.gridTemplateColumns = "repeat("+cols+", 1fr)";
-      grid.innerHTML = cells.map((v, i) => '<div class="cell" data-i="'+i+'" style="background:'+colors[v]+'"></div>').join("");
+
+      // 网格
+      grid.style.gridTemplateColumns = "repeat(" + cols + ", 1fr)";
+      const cmap = conflictMap();
+      grid.innerHTML = cells.map((v, i) => {
+        if (pending) {
+          const c = cmap[i];
+          if (c) {
+            const bg = c.pick ? colors[c.pick]
+              : "linear-gradient(135deg, " + colors[c.ours] + " 0 49%, " + colors[c.theirs] + " 51% 100%)";
+            return '<div class="cell ' + (c.pick ? "resolved" : "conflict") + '" data-conflict="' + i +
+              '" style="background:' + bg + '" title="冲突格：点击在两份色号之间切换选择"></div>';
+          }
+          if (pending.autoChanged.includes(i))
+            return '<div class="cell auto" style="background:' + colors[v] + '" title="远端单边修改，已自动合并"></div>';
+        }
+        return '<div class="cell" data-i="' + i + '" style="background:' + colors[v] + '"></div>';
+      }).join("");
       grid.querySelectorAll(".cell").forEach(el => {
+        if (pending) {
+          el.onpointerdown = () => {
+            const ci = el.dataset.conflict;
+            if (ci !== undefined) {
+              const c = cmap[Number(ci)];
+              pickConflict(c, c.pick === "theirs" ? "ours" : "theirs");
+            }
+          };
+          el.onpointerenter = null;
+          return;
+        }
         el.onpointerdown = () => { dragging = true; paint(Number(el.dataset.i)); };
         el.onpointerenter = () => { if (dragging) paint(Number(el.dataset.i)); };
       });
       window.onpointerup = () => dragging = false;
+
+      renderPanels();
       renderStats();
     }
-    function snapshot() { undo.push([...cells]); redo = []; if (undo.length > 50) undo.shift(); }
+    function renderPanels() {
+      const dirty = isDirty();
+      const unresolved = pending ? pending.conflicts.filter(c => !c.pick).length : 0;
+
+      // 状态行
+      $("#statusLine").innerHTML = '方案 #' + shortId(plan.id) + ' · 当前修订号 <b>r' + plan.revision + '</b>' +
+        (dirty ? ' · <span class="warning">工作稿有未保存变化</span>' : ' · 已全部落库');
+      const sb = $("#sessionBadge");
+      if (editSession) {
+        sb.style.display = "block";
+        sb.textContent = "离线编辑中：基准修订号 r" + editSession.baseRevision + "，修改后请导出回传稿";
+      } else { sb.style.display = "none"; }
+
+      // 消息
+      $("#messages").innerHTML = flash ? '<div class="msg ' + flash.type + '">' + flash.text + '</div>' : "";
+
+      // 合并面板
+      let mp = "";
+      if (pending) {
+        const resolved = pending.conflicts.length - unresolved;
+        mp += '<div class="msg ' + (unresolved ? "warn" : "ok") + '">' +
+          (pending.legacy ? '旧稿按首版迁移（基准 r0）。' : '回传基准修订号 r' + pending.baseRevision + '。') +
+          '单边修改 ' + pending.autoChanged.length + ' 格已自动合并；冲突 ' + resolved + '/' + pending.conflicts.length + ' 格已选定。';
+        if (unresolved) mp += '<br><b>还剩 ' + unresolved + ' 格冲突</b>：斜纹格点击即可在两份色号间切换（蓝框=自动合并格）。';
+        mp += '</div>';
+        if (pending.conflicts.length) {
+          mp += '<div class="row2"><button id="allOurs" class="secondary">全部选本端值</button><button id="allTheirs" class="secondary">全部选对方值</button></div>';
+        }
+        mp += '<div class="toolbar" style="margin-top:8px"><button id="discardBtn" class="secondary">放弃本次回传</button>' +
+          '<button id="mergeSaveBtn"' + (unresolved ? " disabled" : "") + '>确认并正式保存</button></div>';
+      }
+      $("#mergePanel").innerHTML = mp;
+      if (pending) {
+        const ao = $("#allOurs"); if (ao) ao.onclick = () => resolveAll("ours");
+        const at = $("#allTheirs"); if (at) at.onclick = () => resolveAll("theirs");
+        $("#discardBtn").onclick = discardPending;
+        $("#mergeSaveBtn").onclick = formalSave;
+      }
+
+      // 按钮可用性：冲突未处理完不能正式保存/生成交付包/导出离线稿
+      $("#saveBtn").disabled = !!pending ? unresolved > 0 : !dirty;
+      $("#saveBtn").textContent = pending ? "正式保存（合入回传）" : "正式保存";
+      $("#pkgBtn").disabled = !!pending || dirty;
+      $("#draftBtn").disabled = !!pending || dirty;
+      $("#returnBtn").disabled = !!pending;
+      $("#undoBtn").disabled = !!pending || !undoStack.length;
+      $("#redoBtn").disabled = !!pending || !redoStack.length;
+
+      renderPackagePanel(dirty);
+      renderHistory();
+    }
+    function renderPackagePanel(dirty) {
+      const stale = plan.packageRevision !== null && plan.packageRevision !== plan.revision;
+      let head;
+      if (plan.packageRevision === null) head = '<div class="muted">尚未生成交付包。</div>';
+      else if (stale) head = '<div class="msg warn">交付包已失效：格色已变化到 r' + plan.revision +
+          '，当前包基于 r' + plan.packageRevision + '。用色统计与断线风险需随新格子重算，请重新生成；旧包保留为快照。</div>';
+      else head = '<div class="msg ok">当前交付包基于 r' + plan.packageRevision + '，与格子一致，有效。</div>';
+      const list = plan.packages.slice().reverse().map(p =>
+        '<div class="item"><span>r' + p.payload.revision + ' <span class="muted">' + new Date(p.generatedAt).toLocaleString() + '</span>' +
+        (p.payload.revision === plan.packageRevision ? "" : '（旧快照）') + '</span>' +
+        '<button class="secondary" data-pkg="' + plan.packages.indexOf(p) + '">下载</button></div>'
+      ).join("");
+      $("#packagePanel").innerHTML = head + (list ? '<div class="itemlist">' + list + '</div>' : "");
+      $("#packagePanel").querySelectorAll("[data-pkg]").forEach(b => b.onclick = () => {
+        const p = plan.packages[Number(b.dataset.pkg)];
+        downloadJSON(p.payload, "brocade-delivery-r" + p.payload.revision + ".json");
+      });
+      $("#pkgBadge").innerHTML = stale ? badge("warn", "失效待重算")
+        : plan.packageRevision === null ? badge("info", "未生成")
+        : (dirty ? badge("warn", "工作稿变化") : badge("ok", "有效 r" + plan.revision));
+    }
+    function renderHistory() {
+      $("#historyList").innerHTML = plan.history.slice().reverse().map(h =>
+        '<div class="item"><span>r' + h.revision + ' <span class="muted">' + new Date(h.at).toLocaleString() +
+        ' · ' + h.note + '</span></span>' +
+        (h.revision === plan.revision && !isDirty() ? '<button class="secondary" disabled>当前</button>'
+          : '<button class="secondary" data-rev="' + h.revision + '">恢复</button>') + '</div>'
+      ).join("");
+      $("#historyList").querySelectorAll("[data-rev]").forEach(b =>
+        b.onclick = () => recoverToRevision(Number(b.dataset.rev)));
+    }
+    function renderStats() {
+      const counts = computeUsage(cells);
+      stats.innerHTML = counts.map((n, i) =>
+        '<div class="stat"><span><span style="display:inline-block;width:14px;height:14px;background:' + colors[i] + '"></span> 色线' + i + '</span><b>' + n + '</b></div>'
+      ).join("");
+      preview.innerHTML = Array.from({ length: 36 }, (_, i) =>
+        '<div class="mini" style="background:' + colors[cells[(i % 6) + Math.floor(i / 6) * cols] || colors[0]] + '"></div>'
+      ).join("");
+      const riskRows = computeRiskRows(cells);
+      risk.innerHTML = riskRows.length
+        ? '<p class="warning">第' + riskRows.join("、") + '行换色过密，可能断线。</p>'
+        : '<p>暂无明显断线风险。</p>';
+      // 格色变化 → 统计/风险失效状态提示（数值始终随当前工作稿实时重算）
+      let sb, rb;
+      if (pending) { sb = badge("info", "合并预览"); rb = badge("info", "合并预览"); }
+      else if (isDirty()) { sb = badge("warn", "格色已变·实时重算"); rb = badge("warn", "格色已变·实时重算"); }
+      else { sb = badge("ok", "已按 r" + plan.revision + " 计算"); rb = badge("ok", "已按 r" + plan.revision + " 评估"); }
+      $("#statsBadge").innerHTML = sb;
+      $("#riskBadge").innerHTML = rb;
+    }
+
+    // ---------- 编辑操作 ----------
+    function snapshotUndo() { undoStack.push(clone(cells)); redoStack = []; if (undoStack.length > 50) undoStack.shift(); }
     function paint(i) {
-      snapshot();
-      const targets = pattern(i);
-      targets.forEach(t => { if (t >= 0 && t < cells.length) cells[t] = active; });
+      if (pending) return;
+      snapshotUndo();
+      pattern(i).forEach(t => { if (t >= 0 && t < cells.length) cells[t] = active; });
       render();
     }
     function pattern(i) {
       const x = i % cols, y = Math.floor(i / cols);
-      if (block === "cross") return [i, idx(x-1,y), idx(x+1,y), idx(x,y-1), idx(x,y+1)].filter(v => v !== null);
-      if (block === "diamond") return [idx(x,y-1), idx(x-1,y), i, idx(x+1,y), idx(x,y+1)].filter(v => v !== null);
+      if (block === "cross") return [i, idx(x - 1, y), idx(x + 1, y), idx(x, y - 1), idx(x, y + 1)].filter(v => v !== null);
+      if (block === "diamond") return [idx(x, y - 1), idx(x - 1, y), i, idx(x + 1, y), idx(x, y + 1)].filter(v => v !== null);
       return [i];
     }
-    function idx(x,y) { return x < 0 || x >= cols || y < 0 || y >= rows ? null : y * cols + x; }
-    function renderStats() {
-      const counts = colors.map((_, i) => cells.filter(v => v === i).length);
-      stats.innerHTML = counts.map((n, i) => '<div class="stat"><span><span style="display:inline-block;width:14px;height:14px;background:'+colors[i]+'"></span> 色线'+i+'</span><b>'+n+'</b></div>').join("");
-      preview.innerHTML = Array.from({length: 36}, (_, i) => '<div class="mini" style="background:'+colors[cells[(i % 6) + Math.floor(i / 6) * cols] || colors[0]]+'"></div>').join("");
-      const riskRows = [];
-      for (let y = 0; y < rows; y++) {
-        let switches = 0;
-        for (let x = 1; x < cols; x++) if (cells[y*cols+x] !== cells[y*cols+x-1]) switches++;
-        if (switches > cols * .62) riskRows.push(y + 1);
-      }
-      risk.innerHTML = riskRows.length ? '<p class="warning">第'+riskRows.join("、")+'行换色过密，可能断线。</p>' : '<p>暂无明显断线风险。</p>';
-    }
+    function idx(x, y) { return x < 0 || x >= cols || y < 0 || y >= rows ? null : y * cols + x; }
+
+    // ---------- 事件绑定 ----------
     document.querySelectorAll("[data-block]").forEach(btn => btn.onclick = () => block = btn.dataset.block);
-    document.querySelector("#newBtn").onclick = () => { undo = []; redo = []; init(false); };
-    document.querySelector("#undoBtn").onclick = () => { if (!undo.length) return; redo.push([...cells]); cells = undo.pop(); render(); };
-    document.querySelector("#redoBtn").onclick = () => { if (!redo.length) return; undo.push([...cells]); cells = redo.pop(); render(); };
-    document.querySelector("#saveBtn").onclick = () => localStorage.setItem("zfl31Pattern", JSON.stringify({ cols, rows, cells }));
-    document.querySelector("#exportBtn").onclick = () => {
-      const data = { cols, rows, cells, usage: colors.map((color, i) => ({ color, count: cells.filter(v => v === i).length })) };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "brocade-pattern.json"; a.click(); URL.revokeObjectURL(a.href);
+    $("#newBtn").onclick = () => {
+      if (!confirm("新建网格将开启全新方案并清空修订历史，确定继续？")) return;
+      cols = Number($("#cols").value); rows = Number($("#rows").value);
+      plan = createPlan(cols, rows);
+      cells = clone(plan.cells);
+      pending = null; editSession = null; undoStack = []; redoStack = [];
+      if (!persist()) return;
+      setFlash("info", "已建立新方案，修订号 r1。");
+      render();
     };
-    init();
+    $("#undoBtn").onclick = () => { if (pending || !undoStack.length) return; redoStack.push(clone(cells)); cells = undoStack.pop(); render(); };
+    $("#redoBtn").onclick = () => { if (pending || !redoStack.length) return; undoStack.push(clone(cells)); cells = redoStack.pop(); render(); };
+    $("#saveBtn").onclick = formalSave;
+    $("#draftBtn").onclick = exportOfflineDraft;
+    $("#returnBtn").onclick = exportReturn;
+    $("#pkgBtn").onclick = generatePackage;
+    $("#returnFile").onchange = e => {
+      const f = e.target.files[0]; if (f) readJSONFile(f, handleReturn);
+      e.target.value = "";
+    };
+    $("#draftFile").onchange = e => {
+      const f = e.target.files[0]; if (f) readJSONFile(f, loadDraftForEditing);
+      e.target.value = "";
+    };
+
+    // ---------- 启动 ----------
+    plan = loadInitialPlan();
+    cols = plan.cols; rows = plan.rows;
+    $("#cols").value = cols; $("#rows").value = rows;
+    cells = clone(plan.cells);
+    if (plan.history[0] && plan.history[0].note.indexOf("首版迁移") >= 0) {
+      // 迁移结果立即落库（若失败 persist 会给出提示）
+      persist();
+    }
+    render();
   </script>
 </body>
 </html>
